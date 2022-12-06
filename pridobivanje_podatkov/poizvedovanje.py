@@ -4,19 +4,28 @@ import requests
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import inspect
+from datetime import datetime, timezone, timedelta
 
 from obdelaj_stran import vrni_slovar_podatkov_iz_posamezne_strani_igre
+
+def vrni_leto():
+    return (datetime.now(timezone.utc) - timedelta(hours=5)).year
+
+def vrni_dan():
+    # dan na vzhodni obali
+    return (datetime.now(timezone.utc) - timedelta(hours=5)).day
 
 
 load_dotenv()
 AOC_COOKIE = os.getenv('AOC_COOKIE')
 
-letos = 2022
-danes = 1
+letos = vrni_leto()
+danes = vrni_dan()
 
 
 def loginaj_in_prenesi(url):
-    print("Stran se prenaša ...")
+    # print("Stran se prenaša ...")
     with requests.Session() as s:
         try:
             r = s.get(url, headers={'cookie':'session=' + AOC_COOKIE})
@@ -35,10 +44,12 @@ def loginaj_in_prenesi(url):
 
 
 def navodila(dan=danes, leto=letos):
+    print("Navodila se prenašajo!")
     return loginaj_in_prenesi(f'https://adventofcode.com/{leto}/day/{dan}')
 
 
 def prenesi_input(dan=danes, leto=letos):
+    print("Input se prenaša!")
     return loginaj_in_prenesi(f'https://adventofcode.com/{leto}/day/{dan}/input')
 
 
@@ -57,7 +68,7 @@ def is_file_full(file, dan=danes, leto=letos):  # is not empty
     pot = os.path.join(mapa, file)
     if not os.path.exists(pot):
         return False
-    with open(pot, "r", encoding='utf-8') as datoteka:  # open vedno išče v imeniku z naslovom os.getcwd()
+    with open(pot, "r", encoding='utf-8') as datoteka:  # open vedno išče v mapi z naslovom os.getcwd()
         vsebina = datoteka.read()
     return len(vsebina) != 0
 
@@ -66,7 +77,7 @@ def read_from_file(file, dan=danes, leto=letos):
     # prebere iz fajla
     mapa = vrni_pot_za_podatke(dan, leto)
     pot = os.path.join(mapa, file)
-    with open(pot, "r", encoding='utf-8') as datoteka:  # open vedno išče v imeniku z naslovom os.getcwd()
+    with open(pot, "r", encoding='utf-8') as datoteka:  # open vedno išče v mapi z naslovom os.getcwd()
         vsebina = datoteka.read()
     return vsebina
 
@@ -82,6 +93,13 @@ def write_to_file(content, file, dan=danes, leto=letos):
         output.write(content)
 
 
+def append_to_file(content, file, dan=danes, leto=letos):
+    mapa = vrni_pot_za_podatke(dan, leto)
+    pot = os.path.join(mapa, file)
+    with open(pot, 'a', encoding='utf-8') as output:
+        output.write(content)
+
+
 def prenesi(dan=danes, leto=letos):
     if is_file_full("input.txt", dan, leto) and not is_file_full("output_1.txt", dan, leto):
         print("Nisi še rešil prvega dela!")
@@ -89,23 +107,30 @@ def prenesi(dan=danes, leto=letos):
     if is_file_full("output_example_2.txt", dan, leto):
         print("Imaš že vse podatke!")
         return
+    
+    if is_file_full("output_example_1.txt", dan, leto) and not is_file_full("output_example_2.txt", dan, leto) and is_file_full("output_1.txt", dan, leto):
+        write_to_file("None", "output_example_2.txt", dan, leto)
+
+    if not is_file_full("input.txt", dan, leto):
+        vnos = prenesi_input(dan, leto)
+        write_to_file(vnos, "input.txt", dan, leto)
+
     navod = navodila(dan, leto)
     vzorec, *rešitvi = vrni_slovar_podatkov_iz_posamezne_strani_igre(navod)
     vzorec = vzorec['vzorec']
     # print("Vzorec:\n" + vzorec)
 
-    if not is_file_full("input.txt", dan, leto):
-        vnos = prenesi_input(dan, leto)
-        write_to_file(vnos, "input.txt", dan, leto)
     if not is_file_full("input_example.txt", dan, leto):
         write_to_file(vzorec, "input_example.txt", dan, leto)
     
     if len(rešitvi) == 1:
         if is_file_full("output_example_1.txt", dan, leto):
-            print(f"Čudno, samo ena rešitev vzorca je bila pridobljena ...: {rešitvi[0]['res']}")
-        write_to_file(rešitvi[0]['res'], "output_example_1.txt", dan, leto)
-        # print("Rešitev:", rešitvi)
-        print("Uspešen prvi del želim!")
+            # print(f"Čudno, samo ena rešitev vzorca je bila pridobljena ...: {rešitvi[0]['res']}")  # ne, to ni nič čudnega
+            write_to_file(rešitvi[-1]['res'], "output_example_2.txt", dan, leto)
+            print("Uspešen drugi del želim!")
+        else:
+            write_to_file(rešitvi[-1]['res'], "output_example_1.txt", dan, leto)
+            print("Uspešen prvi del želim!")
     elif len(rešitvi) == 2:
         if not is_file_full("output_example_1.txt", dan, leto):
             print("Čudno, zakaj pa prva rešitev ni v bazi?")
@@ -116,24 +141,49 @@ def prenesi(dan=danes, leto=letos):
         print("Rešitvi:", rešitvi)
         print("Uspešen drugi del želim!")
     else:
+        if not is_file_full("output_example_1.txt", dan, leto):
+            write_to_file(rešitvi[-1]['res'], "output_example_1.txt", dan, leto)
+        else:
+            write_to_file(rešitvi[-1]['res'], "output_example_2.txt", dan, leto)
         print("Rešitve:", rešitvi)
         print(f"Veliko ({len(rešitvi)}) rešitev je bilo najdenih!")
 
 
+def is_callable_with(f, *args, **kwargs):
+    try:
+        return inspect.getcallargs(f, *args, **kwargs)
+    except TypeError:
+        return False
+
 def testiraj(odgovor, dan=danes, leto=letos, kos=None):
+    # TODO naredi tk, da če kličeš z dvema parametroma, bo drugi parameter kos, če pa s tremi, bo drugi parameter dan, tretji pa leto
     # vrne True, če test uspešen
+
+    # testiraj(odgovor, 1)  # kos je 1
+    # testiraj(odgovor, 1, 2022)  # dan in leto
+    # testiraj(odgovor, 1, 1, 2022) # najprej je kos
 
     if kos is None:
         kos = is_file_full("output_1.txt", dan, leto) + 1
     print("Del:", kos)
 
-    rešitev = read_from_file(f"output_example_{kos}.txt", dan, leto)
+
     if str(type(odgovor)) not in ["<class 'function'>", "<class 'builtin_function_or_method'>"]:
         tvoja_rešitev = odgovor
     else:
         vzorec = read_from_file("input_example.txt", dan, leto)
-        tvoja_rešitev = odgovor(vzorec)
+        if is_callable_with(odgovor, vzorec, kos=kos):
+            tvoja_rešitev = odgovor(vzorec, kos=kos)
+        else:
+            tvoja_rešitev = odgovor(vzorec)
+        
     print("Tvoja rešitev:", tvoja_rešitev)
+    
+    rešitev = read_from_file(f"output_example_{kos}.txt", dan, leto)
+    if rešitev == "None":
+        print(f"Nimam rešitve za {kos}. del.")
+        return
+    
     print("Moja rešitev:", rešitev)
     kontrola = str(tvoja_rešitev) == str(rešitev)
     if not kontrola:
@@ -155,11 +205,14 @@ def pošlji(odgovor, dan=danes, leto=letos, kos=None):
         pass
     else:
         vnos = read_from_file("input.txt", dan, leto)
-        odgovor = odgovor(vnos)
+        try:
+            odgovor = odgovor(vnos, kos)
+        except TypeError:  # če smo vnesli preveč parametrov
+            odgovor = odgovor(vnos)
     
     print("Tvoj odgovor:", odgovor)
     if is_file_full("output_2.txt", dan, leto):
-        moj_odgovor = read_from_file(f"output_{kos}.txt")
+        moj_odgovor = read_from_file(f"output_{kos}.txt", dan, leto)
         print("Moj odgovor:", moj_odgovor)
         if str(odgovor) != moj_odgovor:
             print("Nisva ista.")
@@ -190,6 +243,20 @@ def pošlji(odgovor, dan=danes, leto=letos, kos=None):
 
     odgovor = str(odgovor)
 
+    if len(odgovor) == 0:
+        print("Podal si prazen odgovor!")
+        return
+    
+    if odgovor == "None":
+        print("Tvoja funkcija je vrnila None!")
+        return
+
+    if is_file_full(f"mistakes_{kos}.txt", dan, leto):
+        sez = read_from_file(f"mistakes_{kos}.txt", dan, leto).split("\n")
+        if odgovor in sez:
+            print(f"Ta odgovor ({odgovor}) si že poizkusil!")
+            return
+
     data = {
       'level': str(kos),
       'answer': odgovor
@@ -212,6 +279,7 @@ def pošlji(odgovor, dan=danes, leto=letos, kos=None):
             write_to_file(odgovor, f"upper_bound_{kos}.txt", dan, leto)
         else:
             print('VERDICT : WRONG (UNKNOWN)')
+            append_to_file("\n" + odgovor, f"mistakes_{kos}.txt", dan, leto)
     elif 'seem to be solving the right level.' in response.text:
         # You will get this if you submit on a level you already solved.
         # Usually happens when you forget to switch from `PART = 1` to `PART = 2`
