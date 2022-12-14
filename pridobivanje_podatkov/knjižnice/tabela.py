@@ -1,3 +1,32 @@
+class Vrsta:
+
+    def __init__(self, vsebina=[]):
+        self.array = []
+
+        if type(vsebina) == int:
+            self.add_elements(vsebina)
+            return
+        
+        števila = True
+        for i in vsebina:
+            try:
+                self.array.append(int(i))
+            except:
+                števila = False
+                break
+        
+        if not števila:
+            self.array = []
+            for i in vsebina:
+                self.array.append(i)
+    
+    def __repr__(self):
+        return str(self.array)
+    
+    def add_elements(self, n=1, default=None):
+        self.array.extend([default] * n)
+    
+
 class Tabela:
 
     def __init__(self, vsebina=[], y=None):
@@ -78,22 +107,24 @@ class Tabela:
     
     def get_row(self, i):
         if 0 <= i < self.height():
-            return self.array[i]
-        return None
+            return Vrsta(self.array[i])
+        return Vrsta()
     
     def get_column(self, j):
         if 0 <= j < self.width():
-            return [row[j] for row in self.array]
-        return None
+            return Vrsta([row[j] for row in self.array])
+        return Vrsta()
 
     def add_rows(self, n=1, default=None):
         if n < 0:
-            raise Exception(f"Število vrstic mora biti nenegativno število, ne pa {n}!")
+            return
+            # raise Exception(f"Število vrstic mora biti nenegativno število, ne pa {n}!")
         self.array.extend([[default] * self.width() for _ in range(n)])
     
     def add_columns(self, n=1, default=None):
         if n < 0:
-            raise Exception(f"Število stolpcev mora biti nenegativno število, ne pa {n}!")
+            return
+            # raise Exception(f"Število stolpcev mora biti nenegativno število, ne pa {n}!")
         # self.array = [vrsta + [default] * n for vrsta in self.array]
         for vrsta in self.array:
             vrsta.extend([default] * n)
@@ -142,16 +173,25 @@ class Tabela:
         if type(koord) == tuple:
             x, y = koord
         else:
+            if type(koord) != int:
+                raise Exception(f"Drugi parameter mora biti ali nabor ali število, ne pa {type(koord)}: {koord}")
             x = koord
         
+        if y is None:
+            raise Exception("Premalo podanih koordinat!")
+        if type(y) != int:
+            raise Exception(f"Vrednost je prvi parameter, koordinate pa potem. Tvoj tretji parameter pa je bil {y}")
+        
+
         if y < 0 or x < 0:
             raise Exception(f"Vsaj ena izmed koordinat je negativna: {(x, y)}")
         
         if 0 <= y < len(self.array) and 0 <= x < len(self.array[y]):
             self.array[y][x] = vrednost
         else:
-            self.add_rows(y - self.height() + 1)
-            self.add_columns(x - self.width() + 1)
+            default = '-' if type(vrednost) == str else (0 if type(vrednost) == int else None)
+            self.add_rows(y - self.height() + 1, default)
+            self.add_columns(x - self.width() + 1, default)
             self.array[y][x] = vrednost
 
     def del_row(self, indeks):
@@ -220,3 +260,15 @@ class Tabela:
     def iter_column_reverse(self, indeks):
         return iter(self.get_column(indeks)[::-1])
     
+    @staticmethod
+    def get_line(par1, par2):
+        # vrne seznam koordinat
+        # simetrična funkcija
+        x, y = par1
+        x2, y2 = par2
+        if x != x2 and y != y2:
+            raise Exception(f"Koordinati morata biti v istem stolpcu ali v isti vrstici: {(x, y)}, {(x2, y2)}")
+        if x == x2:
+            return [(x, u) for u in range(min(y, y2), max(y, y2) + 1)]
+        if y == y2:
+            return [(w, y) for w in range(min(x, x2), max(x, x2) + 1)]

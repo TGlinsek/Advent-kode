@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import inspect
 from datetime import datetime, timezone, timedelta
+import webbrowser
 
 from obdelaj_stran import vrni_slovar_podatkov_iz_posamezne_strani_igre
 
@@ -28,7 +29,7 @@ def loginaj_in_prenesi(url):
     # print("Stran se prenaša ...")
     with requests.Session() as s:
         try:
-            r = s.get(url, headers={'cookie':'session=' + AOC_COOKIE})
+            r = s.get(url, headers={'cookie':'session=' + AOC_COOKIE, "User-Agent": "github.com/TGlinsek/Advent-kode by tadej.glinsek@gmail.com"})
         except Exception as e:
             print(f"Napaka pri prenašanju spletne strani! {e}")
             return
@@ -36,7 +37,7 @@ def loginaj_in_prenesi(url):
         status = r.status_code  # to vrne npr 200, 404, itd.
 
         if status == requests.codes.ok:  # requests.codes.ok so vse veljavne kode
-            print("Stran je prenesena!")
+            print("Preneseno!")
             return r.text
         else:
             print("Napaka pri pridobivanju vsebine! Koda: " + str(status))
@@ -100,6 +101,21 @@ def append_to_file(content, file, dan=danes, leto=letos):
         output.write(content)
 
 
+def preberi_input(dan=danes, leto=letos, file="input.txt"):
+    mapa = vrni_pot_za_podatke(dan, leto)
+    pot = os.path.join(mapa, file)
+    with open(pot, "r", encoding='utf-8') as f:  # open vedno išče v mapi z naslovom os.getcwd()
+        vsebina = []
+        while True:
+            s = f.readline()
+            if s == '':
+                break
+            vsebina.append(
+                "".join(map(str, list(s.rstrip())))
+            )
+    return vsebina
+
+
 def prenesi(dan=danes, leto=letos):
     if is_file_full("input.txt", dan, leto) and not is_file_full("output_1.txt", dan, leto):
         print("Nisi še rešil prvega dela!")
@@ -115,10 +131,22 @@ def prenesi(dan=danes, leto=letos):
         vnos = prenesi_input(dan, leto)
         write_to_file(vnos, "input.txt", dan, leto)
 
+
     navod = navodila(dan, leto)
+
+    aux = navod.split("\n")
+    aux = aux[:6] + aux[10:-12] + aux[-3:]
+    write_to_file("\n".join(aux), "navodila.html", dan, leto)
+    mapa = vrni_pot_za_podatke(dan, leto)
+    pot = os.path.join(mapa, "navodila.html")
+
+    # https://stackoverflow.com/questions/40905703/how-to-open-an-html-file-in-the-browser-from-python:
+    webbrowser.open('file://' + os.path.realpath(pot), new=2)  # odpre navodila
+
     vzorec, *rešitvi = vrni_slovar_podatkov_iz_posamezne_strani_igre(navod)
     vzorec = vzorec['vzorec']
     # print("Vzorec:\n" + vzorec)
+
 
     if not is_file_full("input_example.txt", dan, leto):
         write_to_file(vzorec, "input_example.txt", dan, leto)
@@ -155,6 +183,7 @@ def is_callable_with(f, *args, **kwargs):
     except TypeError:
         return False
 
+
 def testiraj(odgovor, dan=danes, leto=letos, kos=None):
     # TODO naredi tk, da če kličeš z dvema parametroma, bo drugi parameter kos, če pa s tremi, bo drugi parameter dan, tretji pa leto
     # vrne True, če test uspešen
@@ -171,7 +200,8 @@ def testiraj(odgovor, dan=danes, leto=letos, kos=None):
     if str(type(odgovor)) not in ["<class 'function'>", "<class 'builtin_function_or_method'>"]:
         tvoja_rešitev = odgovor
     else:
-        vzorec = read_from_file("input_example.txt", dan, leto)
+        # vzorec = read_from_file("input_example.txt", dan, leto)
+        vzorec = preberi_input(dan, leto, "input_example.txt")
         if is_callable_with(odgovor, vzorec, kos=kos):
             tvoja_rešitev = odgovor(vzorec, kos=kos)
         else:
@@ -204,7 +234,8 @@ def pošlji(odgovor, dan=danes, leto=letos, kos=None):
     if str(type(odgovor)) not in ["<class 'function'>", "<class 'builtin_function_or_method'>"]:
         pass
     else:
-        vnos = read_from_file("input.txt", dan, leto)
+        # vnos = read_from_file("input.txt", dan, leto)
+        vnos = preberi_input(dan, leto)
         try:
             odgovor = odgovor(vnos, kos)
         except TypeError:  # če smo vnesli preveč parametrov
@@ -245,6 +276,9 @@ def pošlji(odgovor, dan=danes, leto=letos, kos=None):
 
     if len(odgovor) == 0:
         print("Podal si prazen odgovor!")
+        return
+    if len(odgovor) == 1:
+        print(f"Malo prekratek odgovor: {odgovor}")
         return
     
     if odgovor == "None":
@@ -296,3 +330,11 @@ def vhod(dan=danes, leto=letos):
 
 def vzorec(dan=danes, leto=letos):
     return read_from_file("input_example.txt", dan, leto)
+
+
+def reši(odgovor, dan=danes, leto=letos, kos=None):
+    pravilno = testiraj(odgovor, dan, leto, kos)
+    if pravilno:
+        pošlji(odgovor, dan, leto, kos)
+    else:
+        print("Testiranje ni uspelo, ne pošiljam odgovora.")
