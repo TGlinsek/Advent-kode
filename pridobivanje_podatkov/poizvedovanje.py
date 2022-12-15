@@ -115,6 +115,26 @@ def preberi_input(dan=danes, leto=letos, file="input.txt"):
             )
     return vsebina
 
+# https://www.w3schools.com/HTML/html_entities.asp
+kode = {
+    "nbsp" : " ",
+    "lt" : "<",
+    "gt" : ">",
+    "amp" : "&",
+    "quot" : '"',
+    "apos" : "'",
+    "cent" : "¢",
+    "pound" : "£",
+    "yen" : "¥",
+    "euro" : "€",
+    "copy" : "©",
+    "reg" : "®"
+}
+
+def prečisti(vzorec):
+    for koda in kode:
+        vzorec = vzorec.replace("&" + koda + ";", kode[koda])
+    return vzorec
 
 def prenesi(dan=danes, leto=letos):
     if is_file_full("input.txt", dan, leto) and not is_file_full("output_1.txt", dan, leto):
@@ -149,6 +169,7 @@ def prenesi(dan=danes, leto=letos):
 
 
     if not is_file_full("input_example.txt", dan, leto):
+        vzorec = prečisti(vzorec)
         write_to_file(vzorec, "input_example.txt", dan, leto)
     
     if len(rešitvi) == 1:

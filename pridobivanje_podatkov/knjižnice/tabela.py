@@ -1,31 +1,48 @@
 class Vrsta:
 
-    def __init__(self, vsebina=[]):
-        self.array = []
-
-        if type(vsebina) == int:
-            self.add_elements(vsebina)
-            return
-        
-        števila = True
-        for i in vsebina:
-            try:
-                self.array.append(int(i))
-            except:
-                števila = False
-                break
-        
-        if not števila:
-            self.array = []
-            for i in vsebina:
-                self.array.append(i)
+    def __init__(self, tabela, indeks):
+        self.tabela = tabela
+        self.indeks = indeks
     
     def __repr__(self):
-        return str(self.array)
+        return str(self.tabela.get_row_copied(self.indeks))
     
     def add_elements(self, n=1, default=None):
-        self.array.extend([default] * n)
+        # v bistvu samo doda n stolpcev desno od tabele
+        self.tabela.safer_set(default, self.tabela.width() - 1 + n, self.indeks, default)
     
+    def append(self, el):
+        self.tabela.safer_set(el, self.tabela.width(), self.indeks)
+
+    def __len__(self):
+        return self.tabela.width()
+    
+    def __iter__(self):
+        return self.tabela.iter_row(self.indeks)
+
+
+class Stolpec:
+
+    def __init__(self, tabela, indeks):
+        self.tabela = tabela
+        self.indeks = indeks
+    
+    def __repr__(self):
+        return str(self.tabela.get_column_copied(self.indeks)) + "^T"
+
+    def add_elements(self, n=1, default=None):
+        # samo doda n vrstic pod tabelo
+        self.tabela.safer_set(default, self.indeks, self.tabela.height() - 1 + n, default)
+    
+    def append(self, el):
+        self.tabela.safer_set(el, self.indeks, self.tabela.height())
+    
+    def __len__(self):
+        return self.tabela.height()
+
+    def __iter__(self):
+        return self.tabela.iter_column(self.indeks)
+
 
 class Tabela:
 
@@ -95,6 +112,9 @@ class Tabela:
     def size(self):
         return (self.width(), self.height())
     
+    def __len__(self):
+        return self.height()
+    
     def get(self, koord, y=None):
         if type(koord) == tuple:
             x, y = koord
@@ -106,14 +126,22 @@ class Tabela:
         return None  # default value
     
     def get_row(self, i):
+        # ohranja referenco na starševsko tabelo
+        return Vrsta(self, i)
+    
+    def get_row_copied(self, i):
         if 0 <= i < self.height():
-            return Vrsta(self.array[i])
-        return Vrsta()
+            return self.array[i]
+        return None
     
     def get_column(self, j):
+        # ohranja referenco na starševsko tabelo
+        return Stolpec(self, j)
+
+    def get_column_copied(self, j):
         if 0 <= j < self.width():
-            return Vrsta([row[j] for row in self.array])
-        return Vrsta()
+            return [row[j] for row in self.array]
+        return None
 
     def add_rows(self, n=1, default=None):
         if n < 0:
@@ -169,7 +197,7 @@ class Tabela:
         else:
             raise Exception(f"Indeks {indeks} presega širino tabele: {self.width()}")
 
-    def safer_set(self, vrednost, koord, y=None):
+    def safer_set(self, vrednost, koord, y=None, default=None):
         if type(koord) == tuple:
             x, y = koord
         else:
@@ -189,7 +217,7 @@ class Tabela:
         if 0 <= y < len(self.array) and 0 <= x < len(self.array[y]):
             self.array[y][x] = vrednost
         else:
-            default = '-' if type(vrednost) == str else (0 if type(vrednost) == int else None)
+            default = ('-' if type(vrednost) == str else (0 if type(vrednost) == int else None)) if default is None else default
             self.add_rows(y - self.height() + 1, default)
             self.add_columns(x - self.width() + 1, default)
             self.array[y][x] = vrednost
@@ -216,6 +244,9 @@ class Tabela:
             self.set_row(self.height() - 1, vrsta)
         except:
             self.del_row(self.height() - 1)
+
+    def append(self, vrsta):
+        self.push_row(vrsta)
     
     def push_column(self, stolpec):
         self.add_columns()
