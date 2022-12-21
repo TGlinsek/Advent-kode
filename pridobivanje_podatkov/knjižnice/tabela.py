@@ -1,4 +1,4 @@
-class Vrsta:
+class Vrsta():
 
     def __init__(self, tabela, indeks):
         self.tabela = tabela
@@ -19,9 +19,26 @@ class Vrsta:
     
     def __iter__(self):
         return self.tabela.iter_row(self.indeks)
+        # return iter(self.tabela.get_row_copied(self.indeks))
+
+    def __getitem__(self, ključ):
+        # return self.tabela.array[self.indeks][ključ]
+
+        if type(ključ) == slice:
+            return self.tabela.get_row_copied(self.indeks)[ključ]
+
+        return self.tabela.get(ključ, self.indeks)
+
+    def __setitem__(self, ključ, vrednost):
+        # self.tabela.array[self.indeks][ključ] = vrednost
+        self.tabela.set(vrednost, ključ, self.indeks)
+
+    def __delitem__(self, ključ):
+        # self.tabela.array[self.indeks][ključ] = None
+        self.tabela.del_el(ključ, self.indeks)
 
 
-class Stolpec:
+class Stolpec():
 
     def __init__(self, tabela, indeks):
         self.tabela = tabela
@@ -42,6 +59,18 @@ class Stolpec:
 
     def __iter__(self):
         return self.tabela.iter_column(self.indeks)
+
+    def __getitem__(self, ključ):
+        if type(ključ) == slice:
+            return self.tabela.get_column_copied(self.indeks)[ključ]
+        
+        return self.tabela.get(self.indeks, ključ)
+
+    def __setitem__(self, ključ, vrednost):
+        self.tabela.set(vrednost, self.indeks, ključ)
+
+    def __delitem__(self, ključ):
+        self.tabela.del_el(self.indeks, ključ)
 
 
 class Tabela:
@@ -238,6 +267,17 @@ class Tabela:
         else:
             raise Exception(f"Indeks {indeks} izven dometa: {[0, self.width()]}")
     
+    def del_el(self, koord, y=None):
+        if type(koord) == tuple:
+            x, y = koord
+        else:
+            x = koord
+        
+        if 0 <= y < len(self.array) and 0 <= x < len(self.array[y]):
+            self.array[y][x] = None
+        else:
+            raise Exception(f"Koordinata {(x, y)} je izven dometa! Dimenzije tabele: {(self.width(), self.height())}")
+
     def push_row(self, vrsta):
         self.add_rows()
         try:
@@ -280,16 +320,16 @@ class Tabela:
         return iter(self.array)
 
     def iter_row(self, indeks):
-        return iter(self.get_row(indeks))
+        return iter(self.get_row_copied(indeks))
     
     def iter_row_reverse(self, indeks):  # TODO: kako narediti iterator, ki vrača elemente vrstice, in pa tudi indeks, le da je indeks takšen, kot je v starševski tabeli (torej, če iteriramo po reverse vrstici, bodo indeksi padali)
-        return iter(self.get_row(indeks)[::-1])
+        return iter(self.get_row_copied(indeks)[::-1])
     
     def iter_column(self, indeks):
-        return iter(self.get_column(indeks))
+        return iter(self.get_column_copied(indeks))
     
     def iter_column_reverse(self, indeks):
-        return iter(self.get_column(indeks)[::-1])
+        return iter(self.get_column_copied(indeks)[::-1])
     
     @staticmethod
     def get_line(par1, par2):
@@ -303,3 +343,8 @@ class Tabela:
             return [(x, u) for u in range(min(y, y2), max(y, y2) + 1)]
         if y == y2:
             return [(w, y) for w in range(min(x, x2), max(x, x2) + 1)]
+
+
+if __name__ == "__main__":
+    a = Tabela([[1, 2], [3, 4], [5, 6]])
+    print(a)
