@@ -137,6 +137,8 @@ def prečisti(vzorec):
     return vzorec
 
 def prenesi(dan=danes, leto=letos):
+    # TODO: če smo že pri drugem delu, ampak nimamo ne output_example_1.txt in output_example_2.txt, shrani ta funkcija le output_example_1.txt. Nared tk, da bo v takem primeru shranilo oboje
+
     if is_file_full("input.txt", dan, leto) and not is_file_full("output_1.txt", dan, leto):
         print("Nisi še rešil prvega dela!")
         return
@@ -215,7 +217,7 @@ def testiraj(odgovor, dan=danes, leto=letos, kos=None):
 
     if kos is None:
         kos = is_file_full("output_1.txt", dan, leto) + 1
-    print("Del:", kos)
+    print(f"Preverjam testni primer za {kos}. del:")
 
 
     if str(type(odgovor)) not in ["<class 'function'>", "<class 'builtin_function_or_method'>"]:
@@ -223,7 +225,9 @@ def testiraj(odgovor, dan=danes, leto=letos, kos=None):
     else:
         # vzorec = read_from_file("input_example.txt", dan, leto)
         vzorec = preberi_input(dan, leto, "input_example.txt")
-        if is_callable_with(odgovor, vzorec, kos=kos):
+        if is_callable_with(odgovor, vzorec):
+            tvoja_rešitev = odgovor(vzorec)
+        elif is_callable_with(odgovor, vzorec, kos=kos):
             tvoja_rešitev = odgovor(vzorec, kos=kos)
         else:
             tvoja_rešitev = odgovor(vzorec)
@@ -250,19 +254,38 @@ def pošlji(odgovor, dan=danes, leto=letos, kos=None):
     
     if kos is None:
         kos = is_file_full("output_1.txt", dan, leto) + 1
-    print("Del:", kos)
+    print(f"Preverjam rešitev za {kos}. del:")
 
     if str(type(odgovor)) not in ["<class 'function'>", "<class 'builtin_function_or_method'>"]:
         pass
     else:
         # vnos = read_from_file("input.txt", dan, leto)
         vnos = preberi_input(dan, leto)
+        """
         try:
             odgovor = odgovor(vnos, kos)
         except TypeError:  # če smo vnesli preveč parametrov
             odgovor = odgovor(vnos)
-    
+        """
+        if is_callable_with(odgovor, vzorec):
+            odgovor = odgovor(vnos)
+        elif is_callable_with(odgovor, vzorec, kos=kos):
+            odgovor = odgovor(vnos, kos=kos)
+        else:
+            odgovor = odgovor(vnos)
+
+    print(f"Preverjam pravilnost {'prv' if kos == 1 else 'drug'}ega dela ...")
     print("Tvoj odgovor:", odgovor)
+    if is_file_full("output_1.txt", dan, leto) and kos == 1:
+        moj_odgovor = read_from_file(f"output_{kos}.txt", dan, leto)
+        print("Moj odgovor:", moj_odgovor)
+        if str(odgovor) != moj_odgovor:
+            print("Nisva ista.")
+        else:
+            print("Ista sva.")
+        print("Del 1 si že rešil!")
+        return
+    
     if is_file_full("output_2.txt", dan, leto):
         moj_odgovor = read_from_file(f"output_{kos}.txt", dan, leto)
         print("Moj odgovor:", moj_odgovor)
@@ -346,12 +369,12 @@ def pošlji(odgovor, dan=danes, leto=letos, kos=None):
 
 
 def vhod(dan=danes, leto=letos):
-    return read_from_file("input.txt", dan, leto)
-
+    # return read_from_file("input.txt", dan, leto)
+    return preberi_input(dan, leto)
 
 def vzorec(dan=danes, leto=letos):
-    return read_from_file("input_example.txt", dan, leto)
-
+    # return read_from_file("input_example.txt", dan, leto)
+    return preberi_input(dan, leto, "input_example.txt")
 
 def reši(odgovor, dan=danes, leto=letos, kos=None):
     pravilno = testiraj(odgovor, dan, leto, kos)
@@ -359,3 +382,15 @@ def reši(odgovor, dan=danes, leto=letos, kos=None):
         pošlji(odgovor, dan, leto, kos)
     else:
         print("Testiranje ni uspelo, ne pošiljam odgovora.")
+    print()
+    """
+    # če bomo prej preverili 2. del
+    # eh, boljš da imamo posebej funkcijo za to
+
+    print("Preverimo še prvi del!")
+    pravilno = testiraj(odgovor, dan, leto, 1)
+    if pravilno:
+        pošlji(odgovor, dan, leto, 1)
+    else:
+        print("Testiranje ni uspelo, ne pošiljam odgovora.")
+    """
